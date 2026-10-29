@@ -8,7 +8,7 @@ I used an AI assistant to help orient me to the unfamiliar repository, compare t
 
 **What I did:** Renamed `save_to_watchlist()` to `add_to_watchlist()` in `services/watchlist_service.py` and updated the import and call site in `routes/watchlist/watchlist.py`. This matches the existing verb-to-noun convention established by `add_to_collection()`.
 
-**How I verified:** I searched the full project for `save_to_watchlist` and confirmed there were no remaining references. I then ran `pytest tests/ -v`; all nine tests passed.
+**How I verified:** I searched the full project for `save_to_watchlist` and confirmed there were no remaining references. I then ran `pytest tests/ -v`; all twelve tests passed.
 
 ## Comment 2 — Deduplication
 
@@ -20,7 +20,7 @@ I used an AI assistant to help orient me to the unfamiliar repository, compare t
 
 **What I did:** Added `tests/test_watchlist.py`, using `test_add_to_collection_nonexistent_film_raises` as the fixture and assertion model. The corresponding watchlist test passes an all-zero UUID and asserts that `FilmNotFoundError` is raised before any insert occurs.
 
-**How I verified:** Both `pytest tests/test_watchlist.py -v` and the full `pytest tests/ -v` suite pass.
+**How I verified:** Both `pytest tests/test_watchlist.py -v` and the full `pytest tests/ -v` suite pass. Route-level tests also use Flask's test client to confirm that a missing film returns HTTP 404 and a duplicate returns HTTP 409 rather than escaping as a 500.
 
 ## Comment 4 — Default visibility
 
@@ -51,6 +51,11 @@ I used an AI assistant to help orient me to the unfamiliar repository, compare t
 - Added `remove_from_watchlist(user_id, film_id)` and `NotInWatchlistError`, with tests for successful removal and the missing-entry case.
 - Added extra duplicate, ordering, and visibility tests beyond the requested nonexistent-film test.
 - Added a `public` request parameter to the add endpoint; `test_visibility_toggle` verifies an explicitly private entry.
+- Added a `DELETE /watchlist/<user_id>/remove` endpoint and verified its 200/404 behavior through Flask's test client.
+
+## HTTP and Module Boundaries
+
+The watchlist routes translate service exceptions at the API boundary: unknown films return 404, duplicates return 409, missing request data returns 400, and removing a missing entry returns 404. Shared domain exceptions now live in `services/errors.py`, so the watchlist no longer imports an error from the unrelated collection service. Models and services import the shared SQLAlchemy instance from `extensions.py`, avoiding dependency on application import order. The nested route package now has an explicit `__init__.py`.
 
 ## Commit History
 
@@ -81,4 +86,12 @@ git diff --check
 git log --merges origin/main..HEAD
 ```
 
-Expected result: nine passing tests, no diff errors, and no merge commits.
+Expected result: twelve passing tests, no diff errors, and no merge commits.
+
+Manual endpoint verification:
+
+1. `POST /watchlist/<user_id>/add` with a valid `film_id` returns 201 and the created entry.
+2. Repeat that request and confirm it returns 409 with a JSON error.
+3. Post an unknown UUID and confirm it returns 404 with a JSON error.
+4. `GET /watchlist/<user_id>` returns newest-added films first and includes the `public` field.
+5. `DELETE /watchlist/<user_id>/remove` returns 200 once, then 404 when repeated.

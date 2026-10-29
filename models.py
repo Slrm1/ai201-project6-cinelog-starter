@@ -7,7 +7,7 @@ SQLAlchemy models. Film IDs use UUIDs throughout.
 
 import uuid
 from datetime import datetime, timezone
-from app import db
+from extensions import db
 
 
 def generate_uuid():
@@ -78,9 +78,15 @@ class WatchlistEntry(db.Model):
     """Represents a film a user wants to watch (saved for later)."""
     id = db.Column(db.String(36), primary_key=True, default=generate_uuid)
     user_id = db.Column(db.String(36), db.ForeignKey("user.id"), nullable=False)
-    film_id = db.Column(db.String(36), db.ForeignKey("film.id"), nullable=False)
+    film_id = db.Column(
+        db.String(36), db.ForeignKey("film.id"), nullable=False, index=True
+    )
     date_added = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc))
     public = db.Column(db.Boolean, default=True)
+
+    __table_args__ = (
+        db.UniqueConstraint("user_id", "film_id", name="unique_user_film_watchlist"),
+    )
 
     def to_dict(self):
         return {

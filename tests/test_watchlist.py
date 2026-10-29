@@ -4,12 +4,15 @@ from datetime import datetime, timedelta, timezone
 
 import pytest
 
-from app import create_app, db
+from app import create_app
+from extensions import db
 from models import Film, User, WatchlistEntry
-from services.collection_service import FilmNotFoundError
-from services.watchlist_service import (
+from services.errors import (
     AlreadyInWatchlistError,
+    FilmNotFoundError,
     NotInWatchlistError,
+)
+from services.watchlist_service import (
     add_to_watchlist,
     get_watchlist,
     remove_from_watchlist,
@@ -104,3 +107,29 @@ def test_get_watchlist_returns_newest_first(app, sample_user):
             "Blade Runner",
             "Alien",
         ]
+
+
+def test_add_route_returns_404_for_unknown_film(app, sample_user):
+    response = app.test_client().post(
+        f"/watchlist/{sample_user}/add",
+        json={"film_id": "00000000-0000-0000-0000-000000000000"},
+    )
+    assert response.status_code == 404
+    assert "No film found" in response.get_json()["error"]
+
+
+def test_add_route_returns_409_for_duplicate(app, sample_user, sample_film):
+    client = app.test_client()
+    endpoint = f"/watchlist/{sample_user}/add"
+    assert client.post(endpoint, json={"film_id": sample_film}).status_code == 201
+    response = client.post(endpoint, json={"film_id": sample_film})
+    assert response.status_code == 409
+    assert "already" in response.get_json()["error"]
+
+
+def test_remove_route_status_codes(app, sample_user, sample_film):
+    client = app.test_client()
+    add_to_watchlist(sample_user, sample_film)
+    endpoint = f"/watchlist/{sample_user}/remove"
+    assert client.delete(endpoint, json={"film_id": sample_film}).status_code == 200
+    assert client.delete(endpoint, json={"film_id": sample_film}).status_code == 404

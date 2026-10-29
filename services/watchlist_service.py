@@ -4,19 +4,13 @@ services/watchlist_service.py — CineLog (feature/watchlist branch)
 Business logic for the watchlist feature.
 """
 
-from app import db
+from extensions import db
 from models import Film, WatchlistEntry
-from services.collection_service import FilmNotFoundError
-
-
-class AlreadyInWatchlistError(Exception):
-    """Raised when a film is already on the user's watchlist."""
-    pass
-
-
-class NotInWatchlistError(Exception):
-    """Raised when removing a film that is not on the user's watchlist."""
-    pass
+from services.errors import (
+    AlreadyInWatchlistError,
+    FilmNotFoundError,
+    NotInWatchlistError,
+)
 
 
 def add_to_watchlist(user_id, film_id, public=True):

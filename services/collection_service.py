@@ -5,23 +5,13 @@ Business logic for managing a user's film collection (films they've already watc
 All functions follow the project's verb_to_noun naming convention.
 """
 
-from app import db
+from extensions import db
 from models import Film, CollectionEntry
-
-
-class FilmNotFoundError(Exception):
-    """Raised when a film_id does not exist in the database."""
-    pass
-
-
-class AlreadyInCollectionError(Exception):
-    """Raised when a film is already in the user's collection."""
-    pass
-
-
-class NotInCollectionError(Exception):
-    """Raised when trying to remove a film that isn't in the collection."""
-    pass
+from services.errors import (
+    AlreadyInCollectionError,
+    FilmNotFoundError,
+    NotInCollectionError,
+)
 
 
 def add_to_collection(user_id, film_id, rating=None):
